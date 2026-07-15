@@ -106,9 +106,9 @@ function About() {
 
           <Link
             to="/register"
-            className="inline-block bg-teal-600 hover:bg-teal-700 active:scale-95 text-white px-8 py-3 rounded-xl font-semibold shadow-lg shadow-teal-200 hover:shadow-teal-300 transition-all duration-200"
+            className="inline-block bg-teal-600 hover:bg-teal-700 active:scale-95 text-white px-8 py-3 rounded-xl font-semibold shadow-lg shadow-teal-200 hover:shadow-teal-300 ion-all duration-200"
           >
-            Join Us
+            Join Ustransit
           </Link>
         </div>
 

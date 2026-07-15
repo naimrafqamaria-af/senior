@@ -1,302 +1,334 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import axios from "axios";
-import { Link } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 
 function Profile() {
-  const user = JSON.parse(localStorage.getItem("user")) || {};
+  const { id } = useParams();
+  const loggedUser = JSON.parse(localStorage.getItem("user")) || {};
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [changingPassword, setChangingPassword] = useState(false);
+  const [successMsg, setSuccessMsg] = useState("");
+  const [errorMsg, setErrorMsg] = useState("");
+  const isOwnProfile = !id || Number(id) === loggedUser.id;
 
-  const [name, setName] = useState(user.name || "");
-  const [email, setEmail] = useState(user.email || "");
-  const [photo, setPhoto] = useState(user.profile_photo || "");
+  useEffect(() => {
+    const userId = id || loggedUser.id;
+    axios
+      .get(`http://localhost:5000/user/${userId}`)
+      .then((res) => { setUser(res.data); setLoading(false); })
+      .catch((err) => { console.log(err); setLoading(false); });
+  }, [id]);
+
   const [file, setFile] = useState(null);
-
-  const [location, setLocation] = useState(user.location || "");
-  const [gender, setGender] = useState(user.gender || "");
-  const [phone, setPhone] = useState(user.phone || "");
-  const [university, setUniversity] = useState(user.university || "");
-  const [skills, setSkills] = useState(user.skills || "");
-  const [pastWorks, setPastWorks] = useState(user.past_works || "");
-  const [maritalStatus, setMaritalStatus] = useState(user.marital_status || "");
-  const [childrenCount, setChildrenCount] = useState(user.children_count || "");
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [photo, setPhoto] = useState("");
+  const [location, setLocation] = useState("");
+  const [gender, setGender] = useState("");
+  const [phone, setPhone] = useState("");
+  const [university, setUniversity] = useState("");
+  const [skills, setSkills] = useState("");
+  const [pastWorks, setPastWorks] = useState("");
+  const [maritalStatus, setMaritalStatus] = useState("");
+  const [childrenCount, setChildrenCount] = useState("");
   const [password, setPassword] = useState("");
-  const [darkMode, setDarkMode] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
-  if (!user.id) {
+  useEffect(() => {
+    if (user) {
+      setName(user.name || "");
+      setEmail(user.email || "");
+      setPhoto(user.profile_photo || "");
+      setLocation(user.location || "");
+      setGender(user.gender || "");
+      setPhone(user.phone || "");
+      setUniversity(user.university || "");
+      setSkills(user.skills || "");
+      setPastWorks(user.past_works || "");
+      setMaritalStatus(user.marital_status || "");
+      setChildrenCount(user.children_count || "");
+    }
+  }, [user]);
+
+  if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-100">
-        <h1 className="text-2xl font-bold text-gray-600">
-          Please login first
-        </h1>
+      <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-teal-50 to-gray-100">
+        <div className="w-12 h-12 border-4 border-teal-500 border-t-transparent rounded-full animate-spin mb-4" />
+        <p className="text-teal-700 font-semibold text-lg">Loading profile...</p>
       </div>
     );
   }
 
-  // =========================
-  // UPLOAD IMAGE
-  // =========================
+  if (!user) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-teal-50 to-gray-100 gap-4">
+        <div className="text-6xl">😕</div>
+        <h1 className="text-2xl font-bold text-gray-700">User not found</h1>
+        <Link to="/" className="text-teal-600 underline font-medium">← Back Home</Link>
+      </div>
+    );
+  }
+
   const handleUpload = async () => {
     if (!file) return photo;
-
     const formData = new FormData();
     formData.append("image", file);
-
     try {
       const res = await axios.post("http://localhost:5000/upload", formData);
       return res.data.imageUrl;
     } catch (err) {
       console.log(err);
-      alert("Image upload failed");
       return photo;
     }
   };
 
-  // =========================
-  // UPDATE PROFILE
-  // =========================
+  const showFeedback = (msg, isError = false) => {
+    if (isError) setErrorMsg(msg);
+    else setSuccessMsg(msg);
+    setTimeout(() => { setSuccessMsg(""); setErrorMsg(""); }, 3000);
+  };
+
   const handleUpdate = async () => {
+    setSaving(true);
     try {
       const uploadedPhoto = await handleUpload();
-
       await axios.put(`http://localhost:5000/users/${user.id}`, {
-        name,
-        email,
-        profile_photo: uploadedPhoto,
-        location,
-        gender,
-        phone,
-        university,
-        skills,
-        past_works: pastWorks,
-        marital_status: maritalStatus,
-        children_count: childrenCount,
+        name, email, profile_photo: uploadedPhoto,
+        location, gender, phone, university, skills,
+        past_works: pastWorks, marital_status: maritalStatus, children_count: childrenCount,
       });
-
-      const updatedUser = {
-        ...user,
-        name,
-        email,
-        profile_photo: uploadedPhoto,
-        location,
-        gender,
-        phone,
-        university,
-        skills,
-        past_works: pastWorks,
-        marital_status: maritalStatus,
-        children_count: childrenCount,
-      };
-
-      localStorage.setItem("user", JSON.stringify(updatedUser));
-      localStorage.setItem("userName", name);
-
-      setPhoto(uploadedPhoto);
-
-      alert("Profile updated successfully ✅");
+      showFeedback("Profile updated successfully!");
     } catch (err) {
       console.log(err);
-      alert("Failed to update profile");
+      showFeedback("Failed to update profile.", true);
+    } finally {
+      setSaving(false);
     }
   };
 
-  // =========================
-  // PASSWORD CHANGE
-  // =========================
   const handlePassword = async () => {
+    if (!password.trim()) return showFeedback("Please enter a new password.", true);
+    setChangingPassword(true);
     try {
-      await axios.put(`http://localhost:5000/change-password/${user.id}`, {
-        password,
-      });
-
-      alert("Password changed successfully ✅");
+      await axios.put(`http://localhost:5000/change-password/${user.id}`, { password });
+      showFeedback("Password changed successfully!");
       setPassword("");
     } catch (err) {
       console.log(err);
-      alert("Failed to change password");
+      showFeedback("Failed to change password.", true);
+    } finally {
+      setChangingPassword(false);
     }
   };
 
-  const inputClass = `w-full border-2 rounded-xl px-4 py-3 text-sm transition ${
-    darkMode
-      ? "bg-gray-700 border-gray-600 text-white"
-      : "bg-gray-50 border-gray-100 text-gray-800"
-  }`;
+  const inputClass =
+    "w-full border border-gray-200 rounded-xl px-4 py-3 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-teal-400 focus:border-transparent transition placeholder-gray-400 text-gray-700 disabled:opacity-60 disabled:cursor-not-allowed";
 
-  const labelClass = `block text-xs font-bold uppercase mb-1.5 text-gray-400`;
-
-  const sectionClass = `rounded-2xl border p-6 ${
-    darkMode
-      ? "bg-gray-800 border-gray-700"
-      : "bg-white border-gray-100 shadow-sm"
-  }`;
+  const labelClass = "block text-sm font-medium text-gray-500 mb-1";
 
   return (
-    <div
-      className={`min-h-screen ${
-        darkMode
-          ? "bg-gray-900"
-          : "bg-gradient-to-br from-teal-50 to-gray-100"
-      }`}
-    >
-      {/* HEADER */}
-      <div className="bg-teal-600 py-10 px-6 text-center relative">
-        <h1 className="text-3xl font-bold text-white">My Profile</h1>
+    <div className="min-h-screen bg-gradient-to-br from-teal-50 via-white to-gray-100">
 
-        <button
-          onClick={() => setDarkMode(!darkMode)}
-          className="absolute right-6 top-1/2 -translate-y-1/2 bg-white/20 px-3 py-2 rounded-xl text-white"
-        >
-          {darkMode ? "☀️" : "🌙"}
-        </button>
+      {/* HERO HEADER */}
+      <div className="relative bg-gradient-to-r from-teal-600 to-teal-500 pb-24 pt-10 text-center shadow-md">
+        <Link to="/" className="absolute left-6 top-6 text-white/80 hover:text-white text-sm font-medium flex items-center gap-1 transition">
+          ← Back Home
+        </Link>
+        <h1 className="text-3xl font-bold text-white tracking-tight">
+          {isOwnProfile ? "My Profile" : `${user.name}'s Profile`}
+        </h1>
+        <p className="text-teal-100 mt-1 text-sm capitalize">{user.role}</p>
       </div>
 
-      <div className="max-w-3xl mx-auto px-6 py-10 space-y-6">
+      {/* TOAST NOTIFICATIONS */}
+      {(successMsg || errorMsg) && (
+        <div className={`fixed top-5 right-5 z-50 px-5 py-3 rounded-xl shadow-lg text-white text-sm font-medium transition-all ${successMsg ? "bg-teal-500" : "bg-red-500"}`}>
+          {successMsg || errorMsg}
+        </div>
+      )}
 
-        {/* PROFILE PHOTO */}
-        <div className={`${sectionClass} flex flex-col items-center gap-4`}>
+      <div className="max-w-2xl mx-auto px-4 -mt-16 pb-16 space-y-5">
 
-          <label className="cursor-pointer">
+        {/* AVATAR CARD */}
+        <div className="bg-white rounded-2xl shadow-sm p-6 flex flex-col items-center gap-3 border border-gray-100">
+          <label className={`relative group ${isOwnProfile ? "cursor-pointer" : ""}`}>
             <img
               src={
                 file
                   ? URL.createObjectURL(file)
-                  : photo ||
-                    "https://cdn-icons-png.flaticon.com/512/149/149071.png"
+                  : photo || "https://cdn-icons-png.flaticon.com/512/149/149071.png"
               }
               alt="profile"
-              className="w-28 h-28 rounded-full object-cover border-4 border-teal-400"
+              className="w-28 h-28 rounded-full object-cover border-4 border-teal-400 shadow"
             />
-
-            <input
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={(e) => setFile(e.target.files[0])}
-            />
+            {isOwnProfile && (
+              <>
+                <div className="absolute inset-0 bg-black/30 rounded-full opacity-0 group-hover:opacity-100 transition flex items-center justify-center">
+                  <span className="text-white text-xs font-semibold">Change</span>
+                </div>
+                <input type="file" className="hidden" accept="image/*" onChange={(e) => setFile(e.target.files[0])} />
+              </>
+            )}
           </label>
-
-          <p className="text-xs text-gray-400">
-            Click image to upload new photo
-          </p>
+          <div className="text-center">
+            <h2 className="text-xl font-bold text-gray-800">{name}</h2>
+            <p className="text-gray-400 text-sm">{email}</p>
+          </div>
+          {isOwnProfile && (
+            <span className="text-xs text-teal-600 bg-teal-50 px-3 py-1 rounded-full border border-teal-200">
+              Click photo to change
+            </span>
+          )}
         </div>
 
         {/* BASIC INFO */}
-        <div className={sectionClass}>
-          <h2 className="text-sm font-bold mb-4 text-gray-500">
+        <div className="bg-white rounded-2xl shadow-sm p-6 border border-gray-100">
+          <h2 className="text-sm font-bold text-teal-600 uppercase tracking-wider mb-4">
             Basic Information
           </h2>
-
-          <div className="grid md:grid-cols-2 gap-5">
-
-            <input
-              className={inputClass}
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Name"
-            />
-
-            <input
-              className={inputClass}
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="Email"
-            />
-
-            <input
-              className={inputClass}
-              value={location}
-              onChange={(e) => setLocation(e.target.value)}
-              placeholder="Location"
-            />
-
-            <input
-              className={inputClass}
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              placeholder="Phone"
-            />
-
-            <select
-              className={inputClass}
-              value={gender}
-              onChange={(e) => setGender(e.target.value)}
-            >
-              <option value="">Gender</option>
-              <option>Male</option>
-              <option>Female</option>
-            </select>
-
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className={labelClass}>Full Name</label>
+              <input className={inputClass} value={name} disabled={!isOwnProfile} onChange={(e) => setName(e.target.value)} placeholder="Your name" />
+            </div>
+            <div>
+              <label className={labelClass}>Email</label>
+              <input className={inputClass} value={email} disabled={!isOwnProfile} onChange={(e) => setEmail(e.target.value)} placeholder="your@email.com" />
+            </div>
+            <div>
+              <label className={labelClass}>Location</label>
+              <input className={inputClass} value={location} disabled={!isOwnProfile} onChange={(e) => setLocation(e.target.value)} placeholder="City, Country" />
+            </div>
+            <div>
+              <label className={labelClass}>Phone</label>
+              <input className={inputClass} value={phone} disabled={!isOwnProfile} onChange={(e) => setPhone(e.target.value)} placeholder="+1 234 567 890" />
+            </div>
+            <div className="sm:col-span-2">
+              <label className={labelClass}>Gender</label>
+              {isOwnProfile ? (
+                <select className={inputClass} value={gender} onChange={(e) => setGender(e.target.value)}>
+                  <option value="">Select gender</option>
+                  <option value="male">Male</option>
+                  <option value="female">Female</option>
+                  <option value="other">Other</option>
+                  <option value="prefer_not_to_say">Prefer not to say</option>
+                </select>
+              ) : (
+                <input className={inputClass} value={gender} disabled placeholder="Gender" />
+              )}
+            </div>
           </div>
         </div>
 
         {/* STUDENT INFO */}
         {user.role === "student" && (
-          <div className={sectionClass}>
-            <h2 className="text-sm font-bold mb-4 text-gray-500">
-              Student Info
+          <div className="bg-white rounded-2xl shadow-sm p-6 border border-gray-100">
+            <h2 className="text-sm font-bold text-teal-600 uppercase tracking-wider mb-4">
+              Student Information
             </h2>
+            <div className="space-y-4">
+              <div>
+                <label className={labelClass}>University</label>
+                <input className={inputClass} value={university} disabled={!isOwnProfile} onChange={(e) => setUniversity(e.target.value)} placeholder="University name" />
+              </div>
+              <div>
+                <label className={labelClass}>Skills</label>
+                <textarea className={inputClass} rows="3" value={skills} disabled={!isOwnProfile} onChange={(e) => setSkills(e.target.value)} placeholder="e.g. React, Node.js, Design..." />
+              </div>
+              <div>
+                <label className={labelClass}>Past Works</label>
+                <textarea className={inputClass} rows="3" value={pastWorks} disabled={!isOwnProfile} onChange={(e) => setPastWorks(e.target.value)} placeholder="Describe your previous projects..." />
+              </div>
+            </div>
+          </div>
+        )}
 
-            <textarea
-              className={inputClass}
-              rows="3"
-              placeholder="Skills"
-              value={skills}
-              onChange={(e) => setSkills(e.target.value)}
-            />
-
-            <textarea
-              className={`${inputClass} mt-3`}
-              rows="3"
-              placeholder="Past Works"
-              value={pastWorks}
-              onChange={(e) => setPastWorks(e.target.value)}
-            />
-
-            <input
-              className={`${inputClass} mt-3`}
-              placeholder="University"
-              value={university}
-              onChange={(e) => setUniversity(e.target.value)}
-            />
+        {/* CLIENT INFO */}
+        {user.role === "client" && (
+          <div className="bg-white rounded-2xl shadow-sm p-6 border border-gray-100">
+            <h2 className="text-sm font-bold text-teal-600 uppercase tracking-wider mb-4">
+              Client Information
+            </h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className={labelClass}>Marital Status</label>
+                {isOwnProfile ? (
+                  <select className={inputClass} value={maritalStatus} onChange={(e) => setMaritalStatus(e.target.value)}>
+                    <option value="">Select status</option>
+                    <option value="single">Single</option>
+                    <option value="married">Married</option>
+                    <option value="divorced">Divorced</option>
+                    <option value="widowed">Widowed</option>
+                  </select>
+                ) : (
+                  <input className={inputClass} value={maritalStatus} disabled placeholder="Marital Status" />
+                )}
+              </div>
+              <div>
+                <label className={labelClass}>Children Count</label>
+                <input type="number" min="0" className={inputClass} value={childrenCount} disabled={!isOwnProfile} onChange={(e) => setChildrenCount(e.target.value)} placeholder="0" />
+              </div>
+            </div>
           </div>
         )}
 
         {/* SAVE BUTTON */}
-        <button
-          onClick={handleUpdate}
-          className="w-full bg-teal-600 text-white py-3 rounded-xl font-bold"
-        >
-          Save Profile
-        </button>
-
-        {/* PASSWORD */}
-        <div className={sectionClass}>
-          <h2 className="text-sm font-bold mb-4 text-gray-500">
-            Security
-          </h2>
-
-          <input
-            type="password"
-            className={inputClass}
-            placeholder="New password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-          />
-
+        {isOwnProfile && (
           <button
-            onClick={handlePassword}
-            className="w-full mt-3 bg-orange-500 text-white py-3 rounded-xl"
+            onClick={handleUpdate}
+            disabled={saving}
+            className="w-full bg-teal-600 hover:bg-teal-700 active:scale-[0.98] disabled:opacity-60 text-white py-3.5 rounded-xl font-bold shadow transition-all flex items-center justify-center gap-2"
           >
-            Change Password
+            {saving ? (
+              <>
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                Saving...
+              </>
+            ) : "Save Profile"}
           </button>
-        </div>
+        )}
 
-        {/* BACK */}
-        <div className="text-center">
-          <Link to="/" className="text-teal-600 font-semibold">
-            ← Back Home
-          </Link>
-        </div>
-
+        {/* CHANGE PASSWORD */}
+        {isOwnProfile && (
+          <div className="bg-white rounded-2xl shadow-sm p-6 border border-gray-100">
+            <h2 className="text-sm font-bold text-teal-600 uppercase tracking-wider mb-4">
+              Change Password
+            </h2>
+            <div className="space-y-3">
+              <div className="relative">
+                <label className={labelClass}>New Password</label>
+                <input
+                  type={showPassword ? "text" : "password"}
+                  className={inputClass + " pr-12"}
+                  placeholder="Enter new password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-9 text-gray-400 hover:text-gray-600 text-sm"
+                >
+                  {showPassword ? "Hide" : "Show"}
+                </button>
+              </div>
+              <button
+                onClick={handlePassword}
+                disabled={changingPassword}
+                className="w-full bg-orange-500 hover:bg-orange-600 active:scale-[0.98] disabled:opacity-60 text-white py-3 rounded-xl font-semibold shadow transition-all flex items-center justify-center gap-2"
+              >
+                {changingPassword ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    Updating...
+                  </>
+                ) : "Change Password"}
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

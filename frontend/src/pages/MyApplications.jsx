@@ -98,18 +98,31 @@ function MyApplications() {
                 <p className="text-sm text-gray-500">
                   📍 {job.location}
                 </p>
+                 
+                 <div className="mt-3">
 
+  <span
+    className={`
+      px-3 py-1 rounded-full text-xs font-semibold
+
+      ${job.status === "Accepted"
+        ? "bg-green-100 text-green-700"
+
+        : job.status === "Rejected"
+        ? "bg-red-100 text-red-700"
+
+        : "bg-yellow-100 text-yellow-700"}
+    `}
+  >
+    {job.status || "Pending"}
+  </span>
+
+</div>
                 <p className="text-sm text-orange-500 font-bold">
                   ${job.budget}
                 </p>
 
-                <span
-                  className={`inline-block mt-2 text-xs px-2 py-1 rounded-full ${getStatusStyle(
-                    job.status
-                  )}`}
-                >
-                  {job.status || "Pending"}
-                </span>
+               
               </div>
             ))}
           </div>

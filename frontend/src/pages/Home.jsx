@@ -439,7 +439,7 @@ function StepCard({ step, index }) {
         transform: hovered ? "translateY(0)" : "translateY(6px)",
         transition: "all 0.3s ease",
       }}>
-        Learn more <span>→</span>
+        Learn more  <span>→</span>
       </div>
     </div>
   );
@@ -734,7 +734,7 @@ const [search,setSearch]=useState("");
               ))}
             </div>
             <p style={{ fontSize: "0.85rem", color: "#64748b" }}>
-              <span style={{ fontWeight: 700, color: "#0d9488" }}>2,000+</span> students already joined
+              <span style={{ fontWeight: 700, color: "#0d9488" }}>2000+</span> students already joined
             </p>
           </div>
 

@@ -12,10 +12,15 @@ import ClientApplications from "./pages/ClientApplications";
 import Profile from "./pages/Profile";
 import Reviews from "./pages/Reviews";
 import ViewProfile from"./pages/ViewProfile";
+import MyPostedJobs from "./pages/MyPostedJobs";
 function App() {
   return (
     <BrowserRouter>
       <Routes>
+        <Route
+  path="/my-posted-jobs"
+  element={<MyPostedJobs />}
+/>
         <Route path="/" element={<Home />} />
         <Route path="/jobs" element={<BrowseJobs />} />
         <Route path="/post" element={<PostJob />} />
@@ -34,6 +39,7 @@ function App() {
 <Route path="/client-applications" element={<ClientApplications/>} />
  <Route path="/profile" element={<Profile />} />
  <Route path="/reviews" element={<Reviews />} />
+ 
  <Route
   path="/profile/:id"
   element={<ViewProfile />}
